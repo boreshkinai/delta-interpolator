@@ -1,0 +1,3 @@
+defaults:
+  - schema/model: LafanInBetween
+  - model: lafan_inbetween_default

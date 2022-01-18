@@ -1,0 +1,23 @@
+# @package _group_
+dataset:
+  backbone: 
+    _target_: src.data.batched_sequence_dataset.LafanSequenceDataset
+  path: "./datasets"
+  name: "deeppose_lafan_v1_fps30"
+  batch_size: 512
+  num_workers: 0
+  sequence_offset_train: 20
+  min_sequence_length_train: 50
+  max_sequence_length_train: 50
+  sequence_offset_validation: 40
+  sequence_length_validation: 65
+  use_sliding_windows: true
+backbone:
+  _target_: src.motion.modules.zero_vel.ZeroVelocity
+optimizer:
+ _target_: torch.optim.Adam
+scheduler:
+ _target_: torch.optim.lr_scheduler.StepLR
+trainer:
+  max_epochs: 0
+  min_epochs: 0
