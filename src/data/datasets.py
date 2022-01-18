@@ -55,7 +55,7 @@ def download_and_unzip(local_dir, dataset_name, url):
 class DatasetLoader():
 	def __init__(self, dataset_path):
 		self.known_datasets = {
-			"deeppose_lafan_v1_fps30": "https://storage.googleapis.com/ml_artistry/deeppose_lafan_v1_fps30.zip",
+			"deeppose_lafan_v1_fps30": "https://storage.googleapis.com/unity-rd-ml-graphics-deeppose/datasets/deeppose_lafan_v1_fps30.zip",
 		}
 		self.dataset_path = dataset_path
 
