@@ -1,3 +1,5 @@
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/motion-inbetweening-via-deep-d-interpolator/motion-synthesis-on-lafan1)](https://paperswithcode.com/sota/motion-synthesis-on-lafan1?p=motion-inbetweening-via-deep-d-interpolator)
+
 ## Create workspace and clone this repository
 
 ```mkdir workspace```
