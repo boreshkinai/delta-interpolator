@@ -1,5 +1,20 @@
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/motion-inbetweening-via-deep-d-interpolator/motion-synthesis-on-lafan1)](https://paperswithcode.com/sota/motion-synthesis-on-lafan1?p=motion-inbetweening-via-deep-d-interpolator)
 
+
+If you use this code in any context, please cite the following paper:
+```
+@misc{oreshkin2022motion,
+      title={Motion Inbetweening via Deep $\Delta$-Interpolator}, 
+      author={Boris N. Oreshkin and Antonios Valkanas and Félix G. Harvey and Louis-Simon Ménard and Florent Bocquelet and Mark J. Coates},
+      year={2022},
+      eprint={2201.06701},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
+
+
+
 ## Create workspace and clone this repository
 
 ```mkdir workspace```
