@@ -35,7 +35,7 @@ nvidia-docker run -p 18888:8888 -p 16006:6006 -v ~/workspace/delta-interpolator:
 ## Enter docker container and launch training session
 
 ```
-docker exec -i -t pose_estimation_$USER  /bin/bash 
+docker exec -i -t delta_interpolator_$USER  /bin/bash 
 ```
 Once inside docker container, this launches the training session for the proposed model. Checkpoints and tensorboard logs are stored in ./logs/lafan/transformer
 ```
