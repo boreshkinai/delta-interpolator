@@ -136,11 +136,11 @@ class SequenceDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(self.training_dataset, batch_size=1, shuffle=True, num_workers=self.num_workers,
-                          collate_fn=_batched_collate)
+                          collate_fn=_batched_collate, persistent_workers=True, pin_memory=True)
 
     def val_dataloader(self):
         return DataLoader(self.validation_dataset, batch_size=1, shuffle=False, num_workers=self.num_workers,
-                          collate_fn=_batched_collate)
+                          collate_fn=_batched_collate, persistent_workers=True, pin_memory=True)
 
     def test_dataloader(self):
         return self.val_dataloader()

@@ -46,7 +46,6 @@ class TrainerOptions:
     weights_summary: Optional[str] = 'top'
     weights_save_path: Optional[str] = None
     num_sanity_val_steps: int = 2
-    truncated_bptt_steps: Optional[int] = None
     resume_from_checkpoint: Optional[str] = None
     profiler: Optional[Any] = None
     benchmark: bool = False
@@ -58,8 +57,7 @@ class TrainerOptions:
     auto_scale_batch_size: Any = False
     prepare_data_per_node: bool = True
     amp_backend: str = 'native'
-    amp_level: str = 'O2'
-    distributed_backend: Optional[str] = None
+    amp_level: Optional[str] = None
 
 
 @dataclass
