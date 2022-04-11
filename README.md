@@ -1,4 +1,4 @@
-## Additional demo videos in response ro Reviews
+## Additional demo videos in response to Reviews
 
 https://storage.googleapis.com/delta-interpolator/additional-demo-videos.zip
 
