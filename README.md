@@ -59,5 +59,5 @@ The notebook password is `default`
 
 ## Pretrained model is available here
 ```
-https://storage.googleapis.com/delta-interpolator/pretrained_model.zip
+<https://storage.googleapis.com/delta-interpolator/pretrained_model.zip>
 ```
