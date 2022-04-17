@@ -58,6 +58,6 @@ http://your_server_ip:18888/notebooks/LaFAN1Results.ipynb
 The notebook password is `default`
 
 ## Pretrained model is available here
-```
+
 [https://storage.googleapis.com/delta-interpolator/pretrained_model.zip](https://storage.googleapis.com/delta-interpolator/pretrained_model.zip)
-```
+
