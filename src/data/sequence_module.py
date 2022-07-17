@@ -4,13 +4,14 @@ from src.geometry.skeleton import Skeleton
 from src.data.augmentation import BatchRemoveQuatDiscontinuities, BatchYRotateOnFrame, \
     BatchCenterXZ, BatchRotate, BatchMirror
 
-import hydra
+import torch
+import hydra, copy
 from hydra.utils import instantiate
 from dataclasses import dataclass
 from typing import Any
 from src.data.typed_table import TypedColumnSequenceDataset
 from src.utils.python import get_full_class_reference
-from src.data.datasets import DatasetLoader
+from src.data.datasets import DatasetLoader, SplitFileDatabaseLoader
 
 
 # custom collate function for batched dataset
@@ -167,3 +168,139 @@ class SequenceDataModuleOptions:
     centerXZ: bool = True
     y_rotate_on_frame: int = -1
     remove_quat_discontinuities: bool = True
+
+class AlternateSequenceDataModule(pl.LightningDataModule):
+    def __init__(self, backbone: Any, path: str, name: str, batch_size: int, num_workers: int = 0,
+                 mirror: bool = True, rotate: bool = True, centerXZ: bool = True,
+                 y_rotate_on_frame: int = -1, remove_quat_discontinuities: bool = True,
+                 augment_training: bool = True, augment_validation: bool = False,
+                 use_sliding_windows: bool = True, sequence_offset_train: int = 64, sequence_offset_validation: int = 64,
+                 min_sequence_length_train: int = 128, max_sequence_length_train: int = 128,
+                 sequence_length_validation: int = 128):
+        super().__init__()
+
+        self.path = hydra.utils.to_absolute_path(path)
+        self.name = name
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.skeleton = None
+
+        self.mirror = mirror
+        self.rotate = rotate
+        self.centerXZ = centerXZ
+        self.y_rotate_on_frame = y_rotate_on_frame
+        self.remove_quat_discontinuities = remove_quat_discontinuities
+        self.augment_training = augment_training
+        self.augment_validation = augment_validation
+
+        self.use_sliding_windows = use_sliding_windows
+        self.sequence_offset_train = sequence_offset_train
+        self.sequence_offset_validation = sequence_offset_validation
+        self.min_sequence_length_train = min_sequence_length_train
+        self.max_sequence_length_train = max_sequence_length_train
+        self.sequence_length_validation = sequence_length_validation
+
+        self.batched_dataset_backbone = backbone
+        
+        # self.train_fraction = train_fraction
+
+    def prepare_data(self):
+        # download dataset
+        dataset_loader = DatasetLoader(self.path)
+        dataset_loader.pull(self.name)
+
+
+    def setup(self, stage=None):
+        self.split = SplitFileDatabaseLoader(self.path).split_file_of(self.path)
+        training_dataset, validation_dataset = TypedColumnSequenceDataset.FromSplit(self.split)
+        
+        training_dataset.remove_short_sequences(self.max_sequence_length_train)
+        training_dataset.format_as_sliding_windows(self.max_sequence_length_train, self.sequence_offset_train)
+        
+        validation_dataset.remove_short_sequences(self.sequence_length_validation)
+        validation_dataset.format_as_sliding_windows(self.sequence_length_validation, self.sequence_offset_validation)
+
+        # Wrap datasets into their batched version
+        #   We need to do that as a wrapped dataset as Lightning doesn't support
+        #   well custom samplers with distributed training
+        #   As a consequence of that, we skipp collapsing in the data loader
+        # Give the length information to the batched dataset as we want to all sequences in a batch to be of same length
+        self.training_dataset = instantiate(self.batched_dataset_backbone, training_dataset,
+                                                     batch_size=self.batch_size,
+                                                     min_length=self.min_sequence_length_train,
+                                                     max_length=self.max_sequence_length_train,
+                                                     shuffle=True,
+                                                     drop_last=True)
+
+        # TODO make sure that even when NOT augmenting validation, we perform the required processing:
+        #  centering, Y rotating, removing quat discontinuities.
+        self.pre_transforms = []
+        self.augmentation = []
+        self.post_transforms = []
+
+        # Pre-processing
+        if self.centerXZ:
+            self.pre_transforms.append(BatchCenterXZ())
+        if self.y_rotate_on_frame >= 0:
+            self.pre_transforms.append(BatchYRotateOnFrame(self.skeleton, rotation_frame=self.y_rotate_on_frame))
+        # Augmentation
+        if self.mirror:
+            self.augmentation.append(BatchMirror(self.skeleton, mirror_prob=0.5))
+        if self.rotate:
+            self.augmentation.append(BatchRotate(self.skeleton))
+        # Post-processing
+        if self.remove_quat_discontinuities:
+            self.post_transforms.append(BatchRemoveQuatDiscontinuities())
+
+        self.training_dataset.add_transforms(self.pre_transforms)
+        if self.augment_training:
+            self.training_dataset.add_transforms(self.augmentation)
+        self.training_dataset.add_transforms(self.post_transforms)
+
+        self.validation_dataset = instantiate(self.batched_dataset_backbone, validation_dataset,
+                                                       batch_size=self.batch_size,
+                                                       min_length=self.sequence_length_validation,
+                                                       max_length=self.sequence_length_validation,
+                                                       shuffle=False,  
+                                                       drop_last=False)
+
+        self.validation_dataset.add_transforms(self.pre_transforms)
+        if self.augment_validation:
+            self.validation_dataset.add_transforms(self.augmentation)
+        self.validation_dataset.add_transforms(self.post_transforms)
+
+    def train_dataloader(self):
+        return DataLoader(self.training_dataset, batch_size=1, shuffle=True, num_workers=self.num_workers,
+                          collate_fn=_batched_collate, persistent_workers=True, pin_memory=True)
+
+    def val_dataloader(self):
+        return DataLoader(self.validation_dataset, batch_size=1, shuffle=False, num_workers=self.num_workers,
+                          collate_fn=_batched_collate, persistent_workers=True, pin_memory=True)
+
+    def test_dataloader(self):
+        return self.val_dataloader()
+
+
+
+
+@dataclass
+class AlternateSequenceDataModuleOptions:
+    _target_: str = get_full_class_reference(AlternateSequenceDataModule)
+    backbone: Any = None
+    path: str = "./datasets/anidance"
+    name: str = "dances"
+    batch_size: int = 32
+    num_workers: int = 0
+    sequence_offset_train: int = 64
+    min_sequence_length_train: int = 128
+    max_sequence_length_train: int = 128
+    use_sliding_windows: bool = True
+    sequence_offset_validation: int = 64
+    sequence_length_validation: int = 128
+    mirror: bool = False
+    rotate: bool = False
+    augment_training: bool = False
+    augment_validation: bool = False
+    centerXZ: bool = False
+    y_rotate_on_frame: int = -1
+    remove_quat_discontinuities: bool = False

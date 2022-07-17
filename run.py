@@ -22,6 +22,7 @@ from src.utils.versioning import get_git_diff
 from hydra.experimental import compose, initialize
 from sklearn.model_selection import ParameterGrid
 from src.utils.checkpointing import set_latest_checkpoint
+from src.data.sequence_module import AlternateSequenceDataModule
 
 # register models
 import src.models
@@ -48,7 +49,14 @@ def run(cfg: BaseOptions):
     dm.prepare_data()
 
     # create model
-    model = ModelFactory.instantiate(cfg, skeleton=dm.get_skeleton())
+    model = None
+    if isinstance(dm, AlternateSequenceDataModule):
+        model = ModelFactory.instantiate(cfg)
+    else:
+        try:
+            model = ModelFactory.instantiate(cfg, skeleton=dm.get_skeleton())
+        except AttributeError:
+            model = ModelFactory.instantiate(cfg)
 
     # setup logging
     metrics = model.get_metrics()
@@ -94,13 +102,18 @@ def run(cfg: BaseOptions):
 
     # test
     metrics = model.evaluate()
-    
-    print("=================== LAFAN BENCHMARK ========================")
-    print("L2Q@5", "L2Q@15", "L2Q@30", "L2P@5", "L2P@15", "L2P@30", "NPSS@5","NPSS@15", "NPSS@30", )
-    print("{:.3f}".format(metrics["L2Q@5"]), "{:.4f}".format(metrics["L2Q@15"]), "{:.4f}".format(metrics["L2Q@30"]), \
-          "{:.3f}".format(metrics["L2P@5"]), "{:.4f}".format(metrics["L2P@15"]), "{:.4f}".format(metrics["L2P@30"]), \
-          "{:.4f}".format(metrics["NPSS@5"]), "{:.5f}".format(metrics["NPSS@15"]), "{:.5f}".format(metrics["NPSS@30"]))
-    print("============================================================")
+    if isinstance(dm, AlternateSequenceDataModule):
+        print("=================== ANIDANCE BENCHMARK =====================")
+        print("L2P@5", "L2P@15", "L2P@30" )
+        print("{:.3f}".format(metrics["L2P@5"]), "{:.4f}".format(metrics["L2P@15"]), "{:.4f}".format(metrics["L2P@30"]))
+        print("============================================================")
+    else:
+        print("=================== LAFAN BENCHMARK ========================")
+        print("L2Q@5", "L2Q@15", "L2Q@30", "L2P@5", "L2P@15", "L2P@30", "NPSS@5","NPSS@15", "NPSS@30", )
+        print("{:.3f}".format(metrics["L2Q@5"]), "{:.4f}".format(metrics["L2Q@15"]), "{:.4f}".format(metrics["L2Q@30"]), \
+            "{:.3f}".format(metrics["L2P@5"]), "{:.4f}".format(metrics["L2P@15"]), "{:.4f}".format(metrics["L2P@30"]), \
+            "{:.4f}".format(metrics["NPSS@5"]), "{:.5f}".format(metrics["NPSS@15"]), "{:.5f}".format(metrics["NPSS@30"]))
+        print("============================================================")
     
 
 def main(filepath: str, overrides: list = []):

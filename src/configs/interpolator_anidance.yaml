@@ -1,0 +1,9 @@
+base_config: anidance_inbetween
+parameters:
+  model.logging.path: "./logs/anidance"
+  model.logging.name: "Interpolator"
+  model.trainer.max_epochs: 0
+  model.dataset.num_workers: 4
+  model.dataset.batch_size: 2048
+  model.optimizer: None
+  model.backbone._target_: src.modules.interpolator.InbetweenInterpolator

@@ -11,7 +11,7 @@ class MiddleFramesRemover:
 
     def __call__(self, frames):
         assert self.past_context + self.future_context + self.middle_frames < len(
-            frames), "Sequence is to short {0:} for the past context {1:}, future context {2:}, middle frames {3:}.".format(
+            frames), "Sequence is too short {0:} for the past context {1:}, future context {2:}, middle frames {3:}.".format(
             len(frames), self.past_context, self.future_context, self.middle_frames)
 
         past_plus_middle = self.past_context + self.middle_frames
@@ -28,6 +28,40 @@ class MiddleFramesRemoverOptions:
     past_context: int = 10
     future_context: int = 1
     middle_frames: int = 5
+
+
+class PeriodicFramesRemover:
+    def __init__(self, past_context=1, future_context=1, middle_frames=5 , period=5):
+        self.past_context = past_context
+        self.future_context = future_context
+        self.middle_frames = middle_frames
+        self.period = period
+
+    def __call__(self, frames):
+        assert self.past_context + self.future_context + self.middle_frames < len(
+            frames), "Sequence is too short {0:} for the past context {1:}, future context {2:}, middle frames {3:}.".format(
+            len(frames), self.past_context, self.future_context, self.middle_frames)
+
+        past_plus_middle = self.past_context + self.middle_frames
+
+        past_context_frames = frames[:self.past_context]
+        key_frames = frames[:self.past_context + self.middle_frames + self.future_context:self.period]
+        key_frame_idx = np.arange(self.past_context + self.middle_frames + self.future_context)[:past_plus_middle:self.period]
+        key_frame_idx = np.concatenate((key_frame_idx, np.arange(past_plus_middle, past_plus_middle + self.future_context)), axis=None)
+        missing_frames = np.delete(frames[:self.past_context + self.middle_frames + self.future_context], key_frame_idx)
+        future_context_frames = frames[past_plus_middle:past_plus_middle + self.future_context]
+        if(future_context_frames[-1] > 30):
+            future_context_frames[-1] = 30  # ensure we never go past 30 frames
+        return past_context_frames, future_context_frames, missing_frames, key_frames
+
+
+@dataclass
+class PeriodicFramesRemoverOptions:
+    _target_: str = get_full_class_reference(PeriodicFramesRemover)
+    past_context: int = 1
+    future_context: int = 1
+    middle_frames: int = 5
+    period: int = 5
 
 
 class RandomMiddleFramesRemover:
@@ -52,7 +86,7 @@ class RandomMiddleFramesRemover:
     def __call__(self, frames):
         assert self.min_past_context > 0, "min_past_context must be positive"
         assert self.max_past_context + self.max_middle_frames + 1 <= len(
-            frames), f"Sequence is to short for the max_past_context context {self.max_past_context}"
+            frames), f"Sequence is too short for the max_past_context context {self.max_past_context}"
         past_context = np.random.randint(self.min_past_context, self.max_past_context + 1)
         remaining_frames = len(frames) - past_context
         if self.weighted_middle_frames:
@@ -88,3 +122,56 @@ class RandomMiddleFramesRemoverOptions:
     max_middle_frames: int = 5
     weighted_middle_frames: bool = True
 
+
+class RandomPeriodicFramesRemover:
+    def __init__(self, past_context=1, future_context=1, period=5, 
+                 min_middle_frames=5, max_middle_frames=40, weighted=True):
+        self.past_context = past_context
+        self.future_context = future_context
+        self.period = period
+        self.min_middle_frames = min_middle_frames
+        self.max_middle_frames = max_middle_frames
+        self.weighted_middle_frames = weighted
+
+        self.middle_frame_lengths = np.array(range(self.min_middle_frames, self.max_middle_frames + 1))
+        self.middle_frame_weights = 1.0 / self.middle_frame_lengths
+        self.middle_frame_weights[2::self.period-2] = 0
+        self.middle_frame_weights[2::self.period-1] = 0
+        self.middle_frame_weights[2::self.period] = 0
+        self.middle_frame_weights = self.middle_frame_weights / sum(self.middle_frame_weights)
+
+
+    def __call__(self, frames):
+        remaining_frames = len(frames) - self.past_context
+        if self.weighted_middle_frames:
+            # Here we sample shorter windows more often, because the number of short windows in the dataset is larger
+            middle_frame_idx_min = min(self.min_middle_frames, remaining_frames - 1) - self.min_middle_frames
+            middle_frame_idx_max = min(self.max_middle_frames + 1, remaining_frames) - self.min_middle_frames
+            middle_frames = np.random.choice(self.middle_frame_lengths[middle_frame_idx_min:middle_frame_idx_max],
+                                             replace=False,
+                                             p=self.middle_frame_weights[middle_frame_idx_min:middle_frame_idx_max])
+        else:
+            middle_frames = np.random.randint(min(self.min_middle_frames, remaining_frames - 1),
+                                              min(self.max_middle_frames + 1, remaining_frames))
+
+    
+        past_plus_middle = self.past_context + middle_frames
+
+        past_context_frames = frames[:self.past_context]
+        key_frames = frames[:self.past_context + middle_frames + self.future_context:self.period]
+        key_frame_idx = np.arange(self.past_context + middle_frames + self.future_context)[:past_plus_middle:self.period]
+        key_frame_idx = np.concatenate((key_frame_idx, np.arange(past_plus_middle, past_plus_middle + self.future_context)), axis=None)
+        missing_frames = np.delete(frames[:self.past_context + middle_frames + self.future_context], key_frame_idx)
+        future_context_frames = frames[past_plus_middle:past_plus_middle + self.future_context]
+        return past_context_frames, future_context_frames, missing_frames, key_frames
+
+
+@dataclass
+class RandomPeriodicFramesRemoverOptions:
+    _target_: str = get_full_class_reference(RandomPeriodicFramesRemover)
+    past_context: int = 1
+    future_context: int = 1
+    min_middle_frames: int = 5
+    max_middle_frames: int = 39
+    period: int = 5
+    weighted: bool = True
