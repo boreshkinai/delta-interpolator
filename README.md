@@ -35,7 +35,7 @@ If you use this code in any context, please cite the following paper:
 
 ```cd workspace```
 
-```git clone https://github.com/AntonValk/delta-interpolator```
+```git clone https://github.com/boreshkinai/delta-interpolator```
 
 ## Build docker image and launch container
 
