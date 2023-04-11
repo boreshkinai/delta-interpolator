@@ -1,5 +1,19 @@
+# Learning Human Motion with Deep Delta Interpolatation
+
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/motion-inbetweening-via-deep-d-interpolator/motion-synthesis-on-lafan1)](https://paperswithcode.com/sota/motion-synthesis-on-lafan1?p=motion-inbetweening-via-deep-d-interpolator)
 
+<p align="center">
+  <img width="1200"  src=./fig/Fig1_Comp3_PushAndStumble_start5381.png>
+  <figcaption align = "center"><b>Fig.1 - Comparison of human motion prediction. Left: Our model. Center: Linear interpolation.     Right: Ground Truth. Tracer lines represent evolution of joint locations over time.</b></figcaption>
+</p>
+
+<p align="center">
+  <img width="400"  src=./fig/anim_1.gif \> 
+  <img width="400"  src=./fig/anim_2.gif \>
+</p>
+<figcaption align = "center"><b>Fig.2 - Left: The demonstration of the proposed $\Delta$-interpolator approach (green), Linear interpolator baseline (yellow), ground truth motion (white). Positional errors are indicated in red. Right: Robustness of the $\Delta$-interpolator (green) w.r.t. the out-of-distribution operation. Ground truth motion (white), SLERP interpolator (yellow), proposed model with both input and output delta modes disabled (blue). $\Delta$-interpolator is not affected by distribution shift. </b></figcaption>
+
+<br/><br/>
 
 If you use this code in any context, please cite the following paper:
 ```
@@ -13,7 +27,7 @@ If you use this code in any context, please cite the following paper:
 }
 ```
 
-
+# Using this repository
 
 ## Create workspace and clone this repository
 
@@ -21,15 +35,13 @@ If you use this code in any context, please cite the following paper:
 
 ```cd workspace```
 
-```git clone https://github.com/boreshkinai/delta-interpolator```
+```git clone https://github.com/AntonValk/delta-interpolator```
 
 ## Build docker image and launch container
 
 Build image and start the lightweight docker container. Note that this assumes that the data for the project will be stored in the shared folder /home/pose-estimation accessible to you and other project members. 
 ```
 docker build -f Dockerfile -t delta_interpolator:$USER .
-
-nvidia-docker run -p 18888:8888 -p 16006:6006 -v ~/workspace/delta-interpolator:/workspace/delta-interpolator -t -d --shm-size="8g" --name delta_interpolator_$USER delta_interpolator:$USER
 ```
 
 ## Enter docker container and launch training session
@@ -41,11 +53,21 @@ Once inside docker container, this launches the training session for the propose
 ```
 python run.py --config=src/configs/transformer.yaml
 ```
-This evaluates zero-velocity and the interpolator models
+This evaluates zero-velocity and the interpolator models for LaFAN1
 ```
 python run.py --config=src/configs/interpolator.yaml
 python run.py --config=src/configs/zerovel.yaml
 ```
+To run the Anidance benchmark experiments run:
+```
+python run.py --config=src/configs/transformer_infill.yaml
+```
+For zero-velocity and interpolator baselines run:
+```
+python run.py --config=src/configs/interpolator_anidance.yaml
+python run.py --config=src/configs/zerovel_anidance.yaml
+```
+
 Training losses eveolve as follows:
 <p align="center">
   <img width="1200"  src=./fig/train_losses.png>
@@ -60,4 +82,5 @@ The notebook password is `default`
 ## Pretrained model is available here
 
 [https://storage.googleapis.com/delta-interpolator/pretrained_model.zip](https://storage.googleapis.com/delta-interpolator/pretrained_model.zip)
+
 

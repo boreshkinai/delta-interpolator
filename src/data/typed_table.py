@@ -258,6 +258,10 @@ class TypedColumnDataset(FlatTypedColumnDataset):
         super().__init__(df, config)
         self.sequences = pd.DataFrame([[int(k), v.values] for k,v in df.groupby('Sequence').groups.items()], columns=['Sequence','Indices'])
 
+    def __delitem__(self, index):
+        self.sequences.drop(index, inplace=True)
+        self.sequences.reset_index(drop=True, inplace=True)
+
     @classmethod
     def FromSplit(cls, split):
         return TypedColumnDataset(split, subset="Training"), TypedColumnDataset(split, subset="Validation")
@@ -269,6 +273,8 @@ class TypedColumnSequenceDataset(Dataset):
         self.config = self.dataset.config
         self.is_valid = self.dataset.is_valid
         self.formatted_as_sliding_windows = False
+        self.x_mean = None
+        self.x_std = None
 
     @classmethod
     def FromSplit(cls, split):
@@ -321,6 +327,12 @@ class TypedColumnSequenceDataset(Dataset):
             logging.info("Filtered out {} sequences that were too short.".format(init_length - final_length))
         self.dataset.sequences = df.reset_index(drop=True)
 
+    def filter_sequences(self, filter_idxs):
+        # Filter sequence by index. Used for Anidance data.
+        df = self.dataset.sequences
+        df = df.iloc[filter_idxs]
+        self.dataset.sequences = df.reset_index(drop=True)
+
     def format_as_sliding_windows(self, width, offset):
         # Modify only the source dataset's .sequences attribute so that indices mimic sliding windows.
         old_sequence_indices = self.dataset.sequences.values
@@ -348,6 +360,19 @@ class TypedColumnSequenceDataset(Dataset):
         self.dataset.sequences = pd.DataFrame([[k, v] for k, v in new_sequence_indices.items()], columns=['Sequence', 'Indices'])
         self.formatted_as_sliding_windows = True
 
+    def compute_stats(self):
+        if self.x_mean is None:
+            positions = []
+            n_joints = self.__getitem__(0).shape[1] // 3
+            for i in range(len(self)):
+                b = self.__getitem__(i)[:,:-1]
+                positions.append(b.view(-1, n_joints, 3))
+
+            positions = torch.cat(positions, dim=0)
+
+            self.x_mean = positions.mean(dim=0, keepdim=True).reshape(-1, 1, n_joints * 3)
+            self.x_std = positions.std(dim=0, keepdim=True).reshape(-1, 1, n_joints * 3)
+
     def __getitem__(self, index):
         if isinstance(index, list):
             # This batched version works for fixed-size sequences only
@@ -365,8 +390,8 @@ class TypedColumnSequenceDataset(Dataset):
 
         return sequence_data
 
+    def __delitem__(self, index):
+        self.dataset.__delitem__(index)
+
     def __len__(self):
         return len(self.dataset.sequences)
-
-
-

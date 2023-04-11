@@ -1,0 +1,46 @@
+base_config: infilling
+parameters:
+  model.logging.path: "./logs/infill-anidance"
+  model.logging.name: "OfficialSplit-RandomFrameTransformer-delta_mode_${model.backbone.delta_mode}-input_delta_mode_${model.backbone.input_delta_mode}-lr_${model.scheduler.warmup_end_lr}-bsz_${model.dataset.batch_size}-enc_blocks_${model.backbone.num_blocks_enc}-reconstruction_scale_${model.reconstruction_scale}-dp_${model.backbone.dropout}-seed_${model.seed}"
+  model.dataset.num_workers: 4
+  model.dataset.batch_size: 64
+  model.dataset.mirror: False
+  model.dataset.rotate: False
+  model.dataset.augment_training: False
+  model.dataset.augment_validation: False
+  model.backbone._target_: src.modules.infill_transformer.Transformer
+  +model.backbone.nb_joints: 24
+  +model.backbone.size_in: 3
+  +model.backbone.size_out: 3
+  +model.backbone.size_out_stage1: 3
+  +model.backbone.num_blocks_enc: 6
+  +model.backbone.num_layers_enc: 3
+  +model.backbone.layer_width_enc: 1024
+  +model.backbone.num_blocks_dec: 0
+  +model.backbone.num_layers_dec: 1
+  +model.backbone.layer_width_dec: 1024
+  +model.backbone.dropout: 0.2
+  +model.backbone.embedding_dim: 32
+  +model.backbone.embedding_size: 256
+  +model.backbone.embedding_num: 2
+  +model.backbone.num_heads: 8
+  +model.backbone.delta_mode: ['interpolator']
+  +model.backbone.input_delta_mode: ['last_pose']
+  
+  model.optimizer._target_: torch.optim.Adam
+  +model.optimizer.lr: 0.0001
+  
+  model.scheduler._target_: src.schedulers.step_lr_with_warmup.StepLrWithWarmup
+  +model.scheduler.warmup_updates: 50
+  +model.scheduler.warmup_init_lr: 1e-6
+  +model.scheduler.warmup_end_lr: 0.0002
+  +model.scheduler.gamma: 0.1
+  +model.scheduler.step_size: 200
+  
+  model.trainer.max_epochs: 1000
+  # model.trainer.max_epochs: 375
+  model.trainer.check_val_every_n_epoch: 5
+  model.pos_loss_l1_scale: 10
+  # model.reconstruction_scale: 1.0
+  model.reconstruction_scale: 0.5
+  model.seed: [6,7]

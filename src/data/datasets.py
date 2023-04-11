@@ -56,6 +56,7 @@ class DatasetLoader():
 	def __init__(self, dataset_path):
 		self.known_datasets = {
 			"deeppose_lafan_v1_fps30": "https://storage.googleapis.com/unity-rd-ml-graphics-deeppose/datasets/deeppose_lafan_v1_fps30.zip",
+			"anidance": "./datasets/anidance/dances"
 		}
 		self.dataset_path = dataset_path
 
@@ -74,6 +75,9 @@ class DatasetLoader():
 	def pull(self, dataset_name: str) -> str:
 		if self.is_available(dataset_name):
 			return self.path_of(dataset_name)
+
+		if dataset_name == "anidance":
+			return self._build_path(dataset_name, "")
 
 		if not self.is_known(dataset_name):
 			raise Exception("dataset not available: " + dataset_name)
@@ -141,6 +145,9 @@ class SplitFileDatabaseLoader(DatasetLoader):
 		if self.is_available(dataset_name):
 			return self.split_file_of(dataset_name)
 
+		if dataset_name == "anidance":
+			return self._build_path("")
+
 		if not self.is_known(dataset_name):
 			raise Exception("dataset not available: " + dataset_name)
 
@@ -154,6 +161,8 @@ class SplitFileDatabaseLoader(DatasetLoader):
 
 	def split_file_of(self, dataset_name):
 		path = self.path_of(dataset_name)
+		if "anidance" in self.dataset_path:
+			path = "/".join(self.dataset_path.split("/", -1)[:-1])
 
 		with open(os.path.join(path, "split.json")) as f:
 			data_splits = json.load(f)

@@ -9,6 +9,7 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 ENV PYTHONIOENCODING=utf-8
+ENV TINI_VERSION 0.19.0
 
 RUN python -m pip install pip -U
 
@@ -16,7 +17,7 @@ RUN python -m pip install pip -U
 RUN conda install -y jupyter
 # Install tini, which will keep the container up as a PID 1
 RUN apt-get install -y curl grep sed dpkg && \
-    curl -L "https://github.com/krallin/tini/releases/download/v0.19.0/tini_0.19.0.deb" > tini.deb && \
+    curl -L "https://github.com/krallin/tini/releases/download/v${TINI_VERSION}/tini_${TINI_VERSION}.deb" > tini.deb && \
     dpkg -i tini.deb && \
     rm tini.deb && \
     apt-get clean && \
@@ -45,4 +46,3 @@ ENTRYPOINT [ "/usr/bin/tini", "--" ]
 WORKDIR /workspace/delta-interpolator
 
 CMD ["jupyter", "notebook", "--allow-root"]
-
