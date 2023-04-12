@@ -37,11 +37,10 @@ If you use this code in any context, please cite the following paper:
 
 ```git clone https://github.com/boreshkinai/delta-interpolator```
 
-## Build docker image and launch container
-
-Build image and start the lightweight docker container. Note that this assumes that the data for the project will be stored in the shared folder /home/pose-estimation accessible to you and other project members. 
+## Build docker image and launch container 
 ```
 docker build -f Dockerfile -t delta_interpolator:$USER .
+nvidia-docker run -p 8888:8888 -p 6006:6006 -v ~/workspace/delta-interpolator:/workspace/delta-interpolator -t -d --shm-size="1g" --name delta_interpolator_$USER delta_interpolator:$USER
 ```
 
 ## Enter docker container and launch training session
