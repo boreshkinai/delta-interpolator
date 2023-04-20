@@ -2,7 +2,7 @@ base_config: lafan_inbetween
 parameters:
   model.logging.path: "./logs/lafan/transformer"
   model.logging.name: "Transformer-delta_mode_${model.backbone.delta_mode}-input_delta_mode_${model.backbone.input_delta_mode}-lr_${model.scheduler.warmup_end_lr}-bsz_${model.dataset.batch_size}-enc_blocks_${model.backbone.num_blocks_enc}-reconstruction_scale_${model.reconstruction_scale}-dp_${model.backbone.dropout}-seed_${model.seed}"
-  model.dataset.num_workers: 4
+  model.dataset.num_workers: 1
   model.dataset.batch_size: 64
   model.dataset.centerXZ: True
   model.dataset.y_rotate_on_frame: 9
@@ -43,7 +43,7 @@ parameters:
   model.quat_loss_scale: 10
   model.pos_loss_l1_scale: 10
   model.reconstruction_scale: 1.0
-  model.seed: [6,7]
+  model.seed: [0,1,2,3]
   
   model.frame_sampler._target_: src.data.frame_sampler.RandomMiddleFramesRemover
   model.frame_sampler.min_past_context: 10

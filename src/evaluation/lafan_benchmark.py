@@ -33,6 +33,7 @@ class LafanBenchmarkEvaluator:
         self.verbose = verbose
         self.n_past = 10
         self.n_future = 1
+        self.n_trans = [5, 15, 30]
         
         dataset = VALID_BENCHMARKS[self.benchmark]
         
@@ -74,8 +75,13 @@ class LafanBenchmarkEvaluator:
         self.l2q = L2Q()
         self.npss = NPSS()
         
+        self.l2p_key = L2P(self.training_dataset.x_mean.to(self.device), 
+                           self.training_dataset.x_std.to(self.device))
+        self.l2q_key = L2Q()
+        self.npss_key = NPSS()
+        
         self.frame_samplers = dict()
-        for n_trans in [5, 15, 30]:
+        for n_trans in self.n_trans:
             self.frame_samplers[n_trans] = MiddleFramesRemover(past_context=self.n_past, 
                                                                future_context=self.n_future, 
                                                                middle_frames=n_trans)
@@ -84,10 +90,15 @@ class LafanBenchmarkEvaluator:
     def evaluate(self, model):
         model.eval()
         metrics = {}
-        for n_trans in [5, 15, 30]:
+        for n_trans in self.n_trans:
             self.l2p.reset()
             self.l2q.reset()
             self.npss.reset()
+            
+            self.l2p_key.reset()
+            self.l2q_key.reset()
+            self.npss_key.reset()
+            
             for i in range(len(self.validation_dataset)):
                 b = self.validation_dataset[i]
                 for k, v in b.items():
@@ -95,8 +106,12 @@ class LafanBenchmarkEvaluator:
                         b[k] = v.to(model.device)
                     
                 past_frames, future_frames, target_frames = model.get_data_from_batch(b, frame_sampler=self.frame_samplers[n_trans])
-
+                
                 target_data, predicted = model.forward_wrapped(past_frames, future_frames, target_frames)
+                
+                past_frames = model.expand_input(past_frames)
+                future_frames = model.expand_input(future_frames)
+                target_frames = model.expand_input(target_frames)
 
                 # Must match what is defined in the task.
                 input_data = {
@@ -134,15 +149,51 @@ class LafanBenchmarkEvaluator:
 
                 self.npss.update(preds=rotations_preds.to(self.device),
                                  target=rotations_target.to(self.device))
-            
-            metrics[f"L2P@{n_trans}"] = np.round(self.l2p.compute().numpy(), 3)
-            metrics[f"L2Q@{n_trans}"] = np.round(self.l2q.compute().numpy(), 3)
-            metrics[f"NPSS@{n_trans}"] = np.round(self.npss.compute().numpy(), 4)
+                
+                # Evaluate metrics on the key frames
+                src_indices = torch.cat([past_frames['frame_indices'], future_frames['frame_indices']], dim=0)
+                positions_preds = predicted['joint_positions_global'][:, src_indices]
+                context_positions_global = torch.cat([past_frames['joint_positions_global'], 
+                                                      future_frames['joint_positions_global']], dim=1)
         
+                
+                self.l2p_key.update(preds = positions_preds.view(*positions_preds.shape[:2],
+                                                                 np.prod(positions_preds.shape[-2:])).to(self.device), 
+                                    target = context_positions_global.view(
+                                        *context_positions_global.shape[:2], 
+                                        np.prod(context_positions_global.shape[-2:])).to(self.device)
+                                                                           )
+                
+                rotations_preds = predicted['joint_rotations_global']
+                rotations_target = torch.cat([past_frames['joint_rotations_global'], 
+                                              target_frames['joint_rotations_global'], 
+                                              future_frames['joint_rotations_global']], dim=1)
+                reference_quat = expanded_input_data['joint_rotations_global'][:, :1]
+                
+                rotations_preds = remove_quat_discontinuities(torch.cat([reference_quat, rotations_preds], dim=1))
+                rotations_target = remove_quat_discontinuities(torch.cat([reference_quat, rotations_target], dim=1))
+                rotations_preds = rotations_preds[:, 1:][:, src_indices]
+                rotations_target = rotations_target[:, 1:][:, src_indices]
+                
+                self.l2q_key.update(preds=rotations_preds.to(self.device), 
+                                    target=rotations_target.to(self.device))
+
+                self.npss_key.update(preds=rotations_preds.to(self.device),
+                                     target=rotations_target.to(self.device))
+                
+                        
+            metrics[f"L2P@{n_trans}"] = self.l2p.compute().numpy().item()
+            metrics[f"L2Q@{n_trans}"] = self.l2q.compute().numpy().item()
+            metrics[f"NPSS@{n_trans}"] = self.npss.compute().numpy().item()
+            
+            metrics[f"L2P_KEY@{n_trans}"] = self.l2p_key.compute().numpy().item()
+            metrics[f"L2Q_KEY@{n_trans}"] = self.l2q_key.compute().numpy().item()
+            metrics[f"NPSS_KEY@{n_trans}"] = self.npss_key.compute().numpy().item()
+                
         if self.verbose:
             logging.info("=================== LAFAN BENCHMARK ========================")
             for k, v in metrics.items():
-                logging.info("%s: %f" % (k, v))
+                logging.info("%s: %f" % (k, np.round(v, 3)))
             logging.info("============================================================")
             
         return metrics
