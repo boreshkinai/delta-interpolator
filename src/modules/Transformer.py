@@ -59,12 +59,12 @@ class Transformer(torch.nn.Module):
         self.num_heads = num_heads
         self.num_blocks_dec = num_blocks_dec
             
-        if delta_mode in ['interpolator', 'last_pose', 'none']:
+        if delta_mode in ['interpolator', 'last_root', 'last_pose', 'none']:
             self.delta_mode = delta_mode
         else:
             raise ValueError(f"Delta mode {delta_mode} is not implemented")
             
-        if input_delta_mode in ['last_pose', 'none']:
+        if input_delta_mode in ['last_pose', 'last_root', 'none']:
             self.input_delta_mode = input_delta_mode
         else:
             raise ValueError(f"Inpuit Delta mode {input_delta_mode} is not implemented")
@@ -142,6 +142,16 @@ class Transformer(torch.nn.Module):
                                      joint_positions_interpolator - joint_positions_ref], 
                                     dim=-1)
             x_tgt = x_tgt.view(*x_tgt.shape[:2], -1)
+        elif self.input_delta_mode == 'last_root':
+            # The input is derived by concatenating both rotations and positions and then flattenning over the joints dimension
+            x_src = torch.cat([input_data["joint_rotations_ortho6d"] - joint_rotations_ref, 
+                               input_data["joint_positions_global"] - joint_positions_ref], 
+                              dim=-1)
+            x_src = x_src.view(*x_src.shape[:2], -1)
+            x_tgt = 0.0 * torch.cat([joint_rotations_interpolator - joint_rotations_ref, 
+                                     joint_positions_interpolator - joint_positions_ref], 
+                                    dim=-1)
+            x_tgt = x_tgt.view(*x_tgt.shape[:2], -1)
         
         # This is the time vector
         src_time = input_data["input_frame_indices"].to(dtype=torch.int64)
@@ -161,6 +171,19 @@ class Transformer(torch.nn.Module):
             
             joint_positions_interpolator = input_data["joint_positions_global"][:, -2, :, :].unsqueeze(1)
             joint_positions_interpolator = joint_positions_interpolator.repeat([1, src_time.shape[0] + tgt_time.shape[0], 1, 1])
+        elif self.delta_mode == 'last_root':
+            joint_rotations_interpolator = input_data["joint_rotations_ortho6d"][:, -2, :1].unsqueeze(1)
+            joint_rotations_interpolator = joint_rotations_interpolator.repeat([1, 
+                                                                                src_time.shape[0] + tgt_time.shape[0], 
+                                                                                input_data["joint_rotations_ortho6d"].shape[2], 
+                                                                                1])
+            
+            joint_positions_interpolator = input_data["joint_positions_global"][:, -2, :1].unsqueeze(1)
+            joint_positions_interpolator = joint_positions_interpolator.repeat([1, 
+                                                                                src_time.shape[0] + tgt_time.shape[0], 
+                                                                                input_data["joint_positions_global"].shape[2], 
+                                                                                1])
+            
         elif self.delta_mode == 'none':
             joint_rotations_interpolator = 0.0
             joint_positions_interpolator = 0.0
