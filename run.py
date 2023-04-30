@@ -27,6 +27,11 @@ from src.data.sequence_module import AlternateSequenceDataModule
 # register models
 import src.models
 
+# This is to avoid using too many CPUs as per
+# https://discuss.pytorch.org/t/cpu-usage-far-too-high-and-training-inefficient/57228
+# Somehow, model.dataset.num_workers: 1 does not help
+torch.set_num_threads(2)
+
 
 def run(cfg: BaseOptions):
     # resolve variable interpolation

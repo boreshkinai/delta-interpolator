@@ -21,7 +21,7 @@ def _batched_collate(batch):
 
 
 class SequenceDataModule(pl.LightningDataModule):
-    def __init__(self, backbone: Any, path: str, name: str, batch_size: int, num_workers: int = 0,
+    def __init__(self, backbone: Any, path: str, name: str, batch_size: int, num_workers: int = 1,
                  mirror: bool = True, rotate: bool = True, centerXZ: bool = True,
                  y_rotate_on_frame: int = -1, remove_quat_discontinuities: bool = True,
                  augment_training: bool = True, augment_validation: bool = False,
@@ -154,7 +154,7 @@ class SequenceDataModuleOptions:
     path: str = "./datasets"
     name: str = "deeppose_master_v1_fps60"
     batch_size: int = 32
-    num_workers: int = 0
+    num_workers: int = 1
     sequence_offset_train: int = 20
     min_sequence_length_train: int = 20
     max_sequence_length_train: int = 50
@@ -170,7 +170,7 @@ class SequenceDataModuleOptions:
     remove_quat_discontinuities: bool = True
 
 class AlternateSequenceDataModule(pl.LightningDataModule):
-    def __init__(self, backbone: Any, path: str, name: str, batch_size: int, num_workers: int = 0,
+    def __init__(self, backbone: Any, path: str, name: str, batch_size: int, num_workers: int = 1,
                  mirror: bool = True, rotate: bool = True, centerXZ: bool = True,
                  y_rotate_on_frame: int = -1, remove_quat_discontinuities: bool = True,
                  augment_training: bool = True, augment_validation: bool = False,
@@ -290,7 +290,7 @@ class AlternateSequenceDataModuleOptions:
     path: str = "./datasets/anidance"
     name: str = "dances"
     batch_size: int = 32
-    num_workers: int = 0
+    num_workers: int = 1
     sequence_offset_train: int = 64
     min_sequence_length_train: int = 128
     max_sequence_length_train: int = 128
