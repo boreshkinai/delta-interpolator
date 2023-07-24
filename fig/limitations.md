@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="400"  src=./prone_spin_success.gif \> 
+  <img width="400"  src=./fig/prone_spin_success.gif \> 
   <img width="400"  src=./walk_spin_success.gif \>
 </p>
 <p align="center">
